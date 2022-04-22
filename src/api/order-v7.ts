@@ -40,7 +40,7 @@ async function retry<Result>(
   return result
 }
 
-enum STATES {
+enum OrderState {
   CREATED,
   RESERVED,
   FAILED_TO_RESERVE,
