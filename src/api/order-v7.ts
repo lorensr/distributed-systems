@@ -1,6 +1,7 @@
 // save state
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { MongoClient } from 'mongodb'
+import { setTimeout } from 'timers/promises'
 import { decodeJWT } from '../auth'
 import { fulfillmentService, inventoryService, paymentService } from '../services'
 
@@ -16,10 +17,7 @@ async function retry<Result>(
   let error: any
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      result = await Promise.race([
-        serviceCall(),
-        new Promise<undefined>((resolve) => setTimeout(resolve, callTimeout, undefined)),
-      ])
+      result = await Promise.race([serviceCall(), setTimeout(callTimeout, undefined)])
       const timedOut = result === undefined
       if (timedOut) {
         throw new Error('Timed out')
@@ -27,7 +25,7 @@ async function retry<Result>(
       break
     } catch (e) {
       error = e
-      await new Promise((resolve) => setTimeout(resolve, initialInterval * Math.pow(2, attempt)))
+      await setTimeout(initialInterval * Math.pow(2, attempt))
     }
   }
   if (error) {
@@ -66,7 +64,7 @@ export default async (request: VercelRequest, response: VercelResponse) => {
       addressId,
       requestId,
       userId,
-      state: STATES.CREATED,
+      state: OrderState.CREATED,
     })
     if (!result.acknowledged) {
       response.status(500).send('Failed to initiate order')
@@ -79,23 +77,23 @@ export default async (request: VercelRequest, response: VercelResponse) => {
       error = e
     })
     if (!reservation || reservation.failed) {
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_RESERVE } })
+      await orders.updateOne({ _id }, { $set: { state: OrderState.FAILED_TO_RESERVE } })
       response.status(400).send(reservation ? `Don't have enough inventory` : error.message)
       return
     }
-    await orders.updateOne({ _id }, { $set: { state: STATES.RESERVED } })
+    await orders.updateOne({ _id }, { $set: { state: OrderState.RESERVED } })
 
     const payment = await retry(() => paymentService.charge({ userId, itemId, quantity, requestId })).catch((e) => {
       error = e
     })
     if (!payment || payment.failed) {
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_CHARGE } })
+      await orders.updateOne({ _id }, { $set: { state: OrderState.FAILED_TO_CHARGE } })
       await retry(() => inventoryService.unreserve({ itemId, quantity, requestId }))
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_CHARGE_UNRESERVED } })
+      await orders.updateOne({ _id }, { $set: { state: OrderState.FAILED_TO_CHARGE_UNRESERVED } })
       response.status(400).send(payment ? `Payment failed` : error.message)
       return
     }
-    await orders.updateOne({ _id }, { $set: { state: STATES.PAID } })
+    await orders.updateOne({ _id }, { $set: { state: OrderState.PAID } })
 
     const fulfillment = await retry(() =>
       fulfillmentService.sendPackage({
@@ -108,15 +106,15 @@ export default async (request: VercelRequest, response: VercelResponse) => {
       error = e
     })
     if (!fulfillment || fulfillment.failed) {
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL } })
+      await orders.updateOne({ _id }, { $set: { state: OrderState.FAILED_TO_FULFILL } })
       await retry(() => paymentService.refund({ userId, itemId, quantity, requestId }))
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL_REFUNDED } })
+      await orders.updateOne({ _id }, { $set: { state: OrderState.FAILED_TO_FULFILL_REFUNDED } })
       await retry(() => inventoryService.unreserve({ itemId, quantity, requestId }))
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL_UNRESERVED } })
+      await orders.updateOne({ _id }, { $set: { state: OrderState.FAILED_TO_FULFILL_UNRESERVED } })
       response.status(400).send(fulfillment ? `Can't ship to your address` : error.message)
       return
     }
-    await orders.updateOne({ _id }, { $set: { state: STATES.FULFILLED } })
+    await orders.updateOne({ _id }, { $set: { state: OrderState.FULFILLED } })
 
     response.status(200).send(`Order submitted!`)
   } catch (e: any) {

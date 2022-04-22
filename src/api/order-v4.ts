@@ -1,5 +1,6 @@
 // add requestId
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { setTimeout } from 'timers/promises'
 import { decodeJWT } from '../auth'
 import { fulfillmentService, inventoryService, paymentService } from '../services'
 
@@ -13,10 +14,7 @@ async function retry<Result>(
   let error: any
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      result = await Promise.race([
-        serviceCall(),
-        new Promise<undefined>((resolve) => setTimeout(resolve, callTimeout, undefined)),
-      ])
+      result = await Promise.race([serviceCall(), setTimeout(callTimeout, undefined)])
       const timedOut = result === undefined
       if (timedOut) {
         throw new Error('Timed out')
@@ -24,7 +22,7 @@ async function retry<Result>(
       break
     } catch (e) {
       error = e
-      await new Promise((resolve) => setTimeout(resolve, initialInterval * Math.pow(2, attempt)))
+      await setTimeout(initialInterval * Math.pow(2, attempt))
     }
   }
   if (error) {
