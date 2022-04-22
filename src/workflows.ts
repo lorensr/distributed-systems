@@ -10,16 +10,14 @@ export async function processOrder(order: activities.Order): Promise<void> {
 
   try {
     await charge(order)
+    try {
+      await sendPackage(order)
+    } catch (e) {
+      await refund(order)
+      throw e
+    }
   } catch (e) {
     await unreserve(order)
-    throw e
-  }
-
-  try {
-    await sendPackage(order)
-  } catch (e) {
-    await unreserve(order)
-    await refund(order)
     throw e
   }
 }
