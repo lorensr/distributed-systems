@@ -62,8 +62,8 @@ export default async (request: VercelRequest, response: VercelResponse) => {
     })
   )
   if (fulfillment.failed) {
-    await inventoryService.unreserve({ itemId, quantity })
     await paymentService.refund({ userId, itemId, quantity })
+    await inventoryService.unreserve({ itemId, quantity })
     response.status(400).send(`Can't ship to your address`)
     return
   }

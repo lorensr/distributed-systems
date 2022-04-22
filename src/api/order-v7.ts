@@ -110,10 +110,10 @@ export default async (request: VercelRequest, response: VercelResponse) => {
     })
     if (!fulfillment || fulfillment.failed) {
       await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL } })
-      await retry(() => inventoryService.unreserve({ itemId, quantity, requestId }))
-      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL_UNRESERVED } })
       await retry(() => paymentService.refund({ userId, itemId, quantity, requestId }))
       await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL_REFUNDED } })
+      await retry(() => inventoryService.unreserve({ itemId, quantity, requestId }))
+      await orders.updateOne({ _id }, { $set: { state: STATES.FAILED_TO_FULFILL_UNRESERVED } })
       response.status(400).send(fulfillment ? `Can't ship to your address` : error.message)
       return
     }
