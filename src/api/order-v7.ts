@@ -70,7 +70,7 @@ export default async (request: VercelRequest, response: VercelResponse) => {
       state: STATES.CREATED,
     })
     if (!result.acknowledged) {
-      response.status(500).send(`Unable to write to database`)
+      response.status(500).send('Failed to initiate order')
       return
     }
     const _id = result.insertedId
