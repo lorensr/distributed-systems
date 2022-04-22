@@ -14,8 +14,7 @@ async function retry<Result>(
 ): Promise<Result> {
   let result: Result | undefined
   let error: any
-  let attempt = 0
-  while (attempt < maxAttempts) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       result = await Promise.race([
         serviceCall(),
@@ -28,7 +27,7 @@ async function retry<Result>(
       break
     } catch (e) {
       error = e
-      await new Promise((resolve) => setTimeout(resolve, initialInterval * Math.pow(2, attempt++)))
+      await new Promise((resolve) => setTimeout(resolve, initialInterval * Math.pow(2, attempt)))
     }
   }
   if (error) {
