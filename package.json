@@ -20,6 +20,8 @@
     ]
   },
   "dependencies": {
+    "@vercel/node": "^1.14.1",
+    "mongodb": "^4.5.0",
     "nanoid": "3.x",
     "temporalio": "0.20.x"
   },
