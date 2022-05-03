@@ -1,7 +1,11 @@
 // add failure compensation
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { decodeJWT } from '../auth'
-import { fulfillmentService, inventoryService, paymentService } from '../services'
+import {
+  fulfillmentService,
+  inventoryService,
+  paymentService,
+} from '../services'
 
 export default async (request: VercelRequest, response: VercelResponse) => {
   const { itemId, quantity, addressId } = request.body

@@ -1,5 +1,8 @@
 // use Temporal
-import { WorkflowClient, WorkflowExecutionAlreadyStartedError } from '@temporalio/client'
+import {
+  WorkflowClient,
+  WorkflowExecutionAlreadyStartedError,
+} from '@temporalio/client'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { decodeJWT } from '../auth'
 import { processOrder } from '../workflows'
@@ -21,7 +24,11 @@ export default async (request: VercelRequest, response: VercelResponse) => {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       response.status(400).send(`Order already submitted`)
     } else {
-      response.status(500).send(`Unknown error. Please try again later. Error message: ${e?.message}`)
+      response
+        .status(500)
+        .send(
+          `Unknown error. Please try again later. Error message: ${e?.message}`
+        )
     }
   }
 }

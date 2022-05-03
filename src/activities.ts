@@ -7,13 +7,7 @@ import {
   paymentService,
   ReservationResult,
 } from './services'
-
-export type Order = {
-  itemId: string
-  quantity: number
-  addressId: string
-  userId: string
-}
+import { Order } from './types'
 
 const getRequestId = () => Context.current().info.workflowExecution.workflowId
 
