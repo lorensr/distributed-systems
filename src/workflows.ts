@@ -1,12 +1,26 @@
-import { proxyActivities } from '@temporalio/workflow';
-// Only import the activity types
-import type * as activities from './activities';
+import { proxyActivities } from '@temporalio/workflow'
+import type * as activities from './activities'
+import { Order } from './types'
 
-const { greet } = proxyActivities<typeof activities>({
+const { reserve, unreserve, charge, refund, sendPackage } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: '1 minute',
-});
+})
 
-/** A workflow that simply calls an activity */
-export async function example(name: string): Promise<string> {
-  return await greet(name);
+export async function processOrder(order: Order): Promise<void> {
+  await reserve(order)
+
+  try {
+    await charge(order)
+    try {
+      await sendPackage(order)
+    } catch (e) {
+      await refund(order)
+      throw e
+    }
+  } catch (e) {
+    await unreserve(order)
+    throw e
+  }
 }
